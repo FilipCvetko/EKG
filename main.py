@@ -22,7 +22,6 @@ class DataGenerator():
         self.sampling_rate = 100
         self.num_patients = 21837
         self.data = None
-        self.labels = None
         # Load scp_statements.csv for diagnostic aggregation
         self.agg_df = pd.read_csv('./ptb-xl/scp_statements.csv', index_col=0)
         self.agg_df = self.agg_df[self.agg_df.diagnostic == 1]
@@ -68,10 +67,10 @@ class DataGenerator():
 
     def pca(self):
         print("PCA in progress...")
-        pca = PCA(n_components=50)
+        pca = PCA(n_components=200)
         pca.fit(self.data)
         pca_data = pca.transform(self.data)
-        self.data = pca_data
+        self.data = np.array(pca_data)
         return pca_data
 
     def aggregate_diagnostic(self, y_dic):
@@ -86,24 +85,25 @@ class DataGenerator():
         if len(tmp) == 0:
             return 404
         # Output array should be: [NORM, MI, STTC, CD, HYP]
-        new_arr = [0,0,0,0,0]
+        new_arr = [0]
         for item in list(set(tmp)):
             if item == "NORM":
                 new_arr[0] = 1
-            elif item == "MI":
-                new_arr[1] = 1  
-            elif item == "STTC":
-                new_arr[2] = 1
-            elif item == "CD":
-                new_arr[3] = 1
-            elif item == "HYP":
-                new_arr[4] = 1
+            # elif item == "MI":
+            #     new_arr[1] = 1  
+            # elif item == "STTC":
+            #     new_arr[2] = 1
+            # elif item == "CD":
+            #     new_arr[3] = 1
+            # elif item == "HYP":
+            #     new_arr[4] = 1
             
         return new_arr
 
-        Just check if normal or not
-
-    def create_labels(self):
+    def create_labels(self, count):
+        """
+            Returns dataframe with dimensions (21430, 51) = 50 data entries + 1 label
+        """
         print("Labeling in progres...")
         Y = pd.read_csv("./ptb-xl/ptbxl_database.csv")
         Y.scp_codes = Y.scp_codes.apply(lambda x: ast.literal_eval(x))
@@ -111,38 +111,20 @@ class DataGenerator():
         # Apply diagnostic superclass
         Y['diagnostic_superclass'] = Y.scp_codes.apply(self.aggregate_diagnostic)
 
-        labels = Y[Y["diagnostic_superclass"] != 404]
+        # Create a pandas object from both data and labels
+        df = pd.DataFrame(self.data)
+        df["label"] = Y["diagnostic_superclass"]
 
-        temp_data = []
+        df = df[df["label"] != 404]
+        df = df.sample(frac=1)
 
-        for j in labels.ecg_id:
-            # These are the ecg_id's essentially subtracted by one t
-            # i is the index of the new array()
-            index = j - 1
-            temp_data.append(self.data[index])
+        df.to_csv(f"./pre_model_data/data_{count}.csv")
+        print(df.shape)
+        return df
 
-        self.data = np.array(temp_data)
-        self.labels = np.array(labels["diagnostic_superclass"])
-
-
-        print("Data shape: ", self.data.shape)
-        print("Labels shape: ", self.labels.shape)
-
-
-        return self.data, self.labels
-
-    def write_to_csv(self, count):
-        print("Writing to CSV in progress...")
-        with open(f"./pre_model_data/data_{count}.csv", "w") as file:
-            writer = csv.writer(file)
-            writer.writerows(self.data)
-        with open(f"./pre_model_data/labels_{count}.csv", "w") as file:
-            writer = csv.writer(file)
-            writer.writerows(self.labels)
 
 datagen = DataGenerator()
 datagen.fourier()
 datagen.pca()
-datagen.create_labels()
+datagen.create_labels(count=3)
 # Select count to whichever index you want, as demonstrated in write_to_csv function
-datagen.write_to_csv(count=1)

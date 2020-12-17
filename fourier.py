@@ -4,7 +4,6 @@ import wfdb
 import ast
 import scipy.signal as ss
 import matplotlib.pyplot as plt
-import heartpy as hp
 import time
 from scipy.fft import fft, fftfreq, ifft
 from sklearn.decomposition import PCA, IncrementalPCA
@@ -20,7 +19,7 @@ std = 0.012926531971565828
 path = ""
 sampling_rate = 100
 
-def generate_std():
+def generate():
     num_patients = 21837
 
     h5 = h5py.File('./fourier_data/fourier_data.h5', 'w')
@@ -74,4 +73,4 @@ def fourier(data):
 def IncrementalPCA(batch):
     raise NotImplementedError
     
-generate_std()
+generate()

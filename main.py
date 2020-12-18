@@ -19,8 +19,9 @@ class DataGenerator():
     def __init__(self):
         self.fourier_mean = 0.006619616772229425
         self.fourier_std = 0.012926531971565828
-        self.sampling_rate = 100
+        self.sampling_rate = 500
         self.num_patients = 21837
+        self.components = 250
         self.data = None
         # Load scp_statements.csv for diagnostic aggregation
         self.agg_df = pd.read_csv('./ptb-xl/scp_statements.csv', index_col=0)
@@ -36,7 +37,7 @@ class DataGenerator():
                     continue
                 i_temp = str(i).zfill(2)
                 j_temp = str(j).zfill(3)
-                filename = f"./ptb-xl/records100/{i_temp}000/{i_temp}{j_temp}_lr"
+                filename = f"./ptb-xl/records500/{i_temp}000/{i_temp}{j_temp}_hr"
                 try:
                     data = wfdb.rdsamp(filename)
                 except:
@@ -45,15 +46,15 @@ class DataGenerator():
                 print(filename)
                 arr = []
 
-                freqs = fftfreq(1000)
+                freqs = fftfreq(5000)
                 mask = freqs > 0
                 for k in range(12):
                     temp = data[0][:,k]
                     fft_vals = fft(temp)
                     # To get true theoretical fit
-                    fft_theo = 2.0*np.abs(fft_vals/1000)
+                    fft_theo = 2.0*np.abs(fft_vals/5000)
                     arr.extend(fft_theo[mask])
-                # Shape here : (12*499,1)
+                # Shape here : (12*2499,1)
                 arr = np.array(arr)
 
                 # Let's do the preprocessing at the end
@@ -67,7 +68,7 @@ class DataGenerator():
 
     def pca(self):
         print("PCA in progress...")
-        pca = PCA(n_components=200)
+        pca = PCA(n_components=self.components)
         pca.fit(self.data)
         pca_data = pca.transform(self.data)
         self.data = np.array(pca_data)
@@ -85,10 +86,10 @@ class DataGenerator():
         if len(tmp) == 0:
             return 404
         # Output array should be: [NORM, MI, STTC, CD, HYP]
-        new_arr = [0]
+        new_arr = [1]
         for item in list(set(tmp)):
             if item == "NORM":
-                new_arr[0] = 1
+                new_arr[0] = 0
             # elif item == "MI":
             #     new_arr[1] = 1  
             # elif item == "STTC":
@@ -102,7 +103,7 @@ class DataGenerator():
 
     def create_labels(self, count):
         """
-            Returns dataframe with dimensions (21430, 51) = 50 data entries + 1 label
+            Returns dataframe with dimensions (21430, 351) = 50 data entries + 1 label
         """
         print("Labeling in progres...")
         Y = pd.read_csv("./ptb-xl/ptbxl_database.csv")
@@ -126,5 +127,5 @@ class DataGenerator():
 datagen = DataGenerator()
 datagen.fourier()
 datagen.pca()
-datagen.create_labels(count=3)
+datagen.create_labels(count=6)
 # Select count to whichever index you want, as demonstrated in write_to_csv function

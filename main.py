@@ -21,8 +21,9 @@ class DataGenerator():
         self.fourier_std = 0.012926531971565828
         self.sampling_rate = 500
         self.num_patients = 21837
-        self.components = 250
+        self.components = 20
         self.data = None
+        self.fourier_comps = self.sampling_rate * 5 - 1
         # Load scp_statements.csv for diagnostic aggregation
         self.agg_df = pd.read_csv('./ptb-xl/scp_statements.csv', index_col=0)
         self.agg_df = self.agg_df[self.agg_df.diagnostic == 1]
@@ -68,11 +69,18 @@ class DataGenerator():
 
     def pca(self):
         print("PCA in progress...")
-        pca = PCA(n_components=self.components)
-        pca.fit(self.data)
-        pca_data = pca.transform(self.data)
+        for i in range(12):
+            pca = PCA(n_components=self.components)
+            pca.fit(self.data[:,i*self.fourier_comps:(i+1)*self.fourier_comps])
+            temp_pca_data = np.array(pca.transform(self.data[:,k]))
+            if i == 0:
+                pca_data = temp_pca_data
+                continue
+            pca_data = np.concatenate((pca_data, temp_pca_data), axis=1)
+            
         self.data = np.array(pca_data)
-        return pca_data
+        print("self.data shape after PCA (expected 21837,20*12): ", self.data.shape)
+        return self.data
 
     def aggregate_diagnostic(self, y_dic):
         tmp = []
@@ -127,5 +135,5 @@ class DataGenerator():
 datagen = DataGenerator()
 datagen.fourier()
 datagen.pca()
-datagen.create_labels(count=6)
+datagen.create_labels(count=7)
 # Select count to whichever index you want, as demonstrated in write_to_csv function
